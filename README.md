@@ -12,7 +12,8 @@
 ## 项目结构
 
 ```text
-/home/my/Qt/iot
+iot
+├── README.md
 ├── iotgateway/                                      # 源码目录
 │   ├── iotgateway.pro                               # qmake 工程文件
 │   ├── main.cpp
@@ -24,19 +25,15 @@
 │   ├── mqttmanager.*
 │   └── sensorthread.*
 └── build-iotgateway-Desktop_Qt_5_12_9_GCC_64bit-Debug/
-    ├── iotgateway                                   # 已构建好的可执行文件
+    ├── iotgateway                                   # Linux 已构建好的可执行文件
     └── gateway.db                                   # 运行时 SQLite 数据库
 ```
 
 ## 环境要求
 
-推荐使用当前机器已有的 Qt 5.12.9：
+工程使用 Qt 5，推荐 Qt 5.12.9 或兼容版本。
 
-```bash
-/home/my/Qt5.12.9/5.12.9/gcc_64/bin/qmake --version
-```
-
-工程使用的 Qt 模块：
+需要安装的 Qt 模块：
 
 - `core`
 - `gui`
@@ -47,31 +44,32 @@
 
 还需要：
 
-- C++ 编译器，例如 `g++`
-- `make`
-- Qt SQLite 驱动 `libqsqlite.so`
+- C++ 编译器
+- qmake
+- Qt SQLite 驱动
 - 可选：MQTT Broker，例如 Mosquitto
 
-## 直接启动已有构建
+## Linux 下运行
 
-如果只是运行项目，直接进入已有构建目录启动：
+### 方式一：直接运行已有构建
+
+仓库中已有 Linux Debug 构建目录，可以直接运行：
 
 ```bash
 cd /home/my/Qt/iot/build-iotgateway-Desktop_Qt_5_12_9_GCC_64bit-Debug
 ./iotgateway
 ```
 
-建议在构建目录中启动，因为程序使用相对路径 `gateway.db`，这样会继续使用：
+建议在构建目录中启动，因为程序使用相对路径 `gateway.db`。如果从其他目录启动，`gateway.db` 会生成在当时的工作目录下。
 
-```text
-/home/my/Qt/iot/build-iotgateway-Desktop_Qt_5_12_9_GCC_64bit-Debug/gateway.db
+如果提示找不到 Qt 库，先设置 Qt 库路径：
+
+```bash
+export LD_LIBRARY_PATH=/home/my/Qt5.12.9/5.12.9/gcc_64/lib:$LD_LIBRARY_PATH
+./iotgateway
 ```
 
-如果从其他目录启动，`gateway.db` 会生成在当时的工作目录下。
-
-## 从源码重新构建并启动
-
-从仓库根目录执行：
+### 方式二：从源码重新构建
 
 ```bash
 cd /home/my/Qt/iot
@@ -82,34 +80,90 @@ make -j$(nproc)
 ./iotgateway
 ```
 
-如果你想使用系统默认 `qmake`，需要确认默认 Qt 也安装了 `Qt Charts`、`Qt SQL` 和 `Qt MQTT`：
+如果系统默认 `qmake` 已安装 `Qt Charts`、`Qt SQL` 和 `Qt MQTT`，也可以使用：
 
 ```bash
-qmake --version
+cd /home/my/Qt/iot
+mkdir -p build
+cd build
 qmake ../iotgateway/iotgateway.pro
 make -j$(nproc)
 ./iotgateway
 ```
 
-当前已构建的可执行文件链接到 `/home/my/Qt5.12.9/5.12.9/gcc_64` 下的 Qt 5.12.9，所以优先使用上面的完整 qmake 路径更稳。
-
-## 用 Qt Creator 启动
+### 方式三：使用 Qt Creator
 
 1. 打开 Qt Creator。
-2. 选择 `Open Project`，打开：
+2. 选择 `Open Project`，打开 `iotgateway/iotgateway.pro`。
+3. Kit 选择 Linux 桌面 Qt Kit，例如 `Desktop Qt 5.12.9 GCC 64bit`。
+4. 点击 `Build`。
+5. 点击 `Run`。
+
+## Windows 下运行
+
+Windows 下不能直接运行仓库里的 Linux 可执行文件，需要使用 Windows 版 Qt 重新构建。
+
+### 方式一：使用 Qt Creator
+
+1. 安装 Qt 5.12.9 或兼容版本。
+2. 安装并启用这些组件：
+   - MinGW 或 MSVC 编译器
+   - Qt Charts
+   - Qt MQTT
+   - Qt SQL
+3. 打开 Qt Creator。
+4. 选择 `Open Project`，打开：
 
 ```text
-/home/my/Qt/iot/iotgateway/iotgateway.pro
+iotgateway/iotgateway.pro
 ```
 
-3. Kit 选择 `Desktop Qt 5.12.9 GCC 64bit`。
-4. 构建目录选择或保持：
+5. Kit 选择 Windows 桌面 Kit，例如：
 
 ```text
-/home/my/Qt/iot/build-iotgateway-Desktop_Qt_5_12_9_GCC_64bit-Debug
+Desktop Qt 5.12.9 MinGW 64-bit
 ```
 
-5. 点击 `Build`，再点击 `Run`。
+6. 点击 `Configure Project`。
+7. 点击 `Build`。
+8. 点击 `Run`。
+
+### 方式二：使用命令行构建
+
+先打开 Qt 提供的命令行环境，例如 `Qt 5.12.9 for Desktop (MinGW 64-bit)`，然后进入项目目录：
+
+```bat
+cd /d D:\path\to\iot
+mkdir build
+cd build
+qmake ..\iotgateway\iotgateway.pro
+mingw32-make
+iotgateway.exe
+```
+
+如果使用 MSVC Kit，则在对应的 Qt MSVC 命令行中执行：
+
+```bat
+cd /d D:\path\to\iot
+mkdir build
+cd build
+qmake ..\iotgateway\iotgateway.pro
+nmake
+iotgateway.exe
+```
+
+其中 `D:\path\to\iot` 替换成你本机实际的项目路径。
+
+### Windows 运行注意事项
+
+- 如果双击运行 `iotgateway.exe` 提示缺少 Qt DLL，优先通过 Qt Creator 运行。
+- 如果要单独发布 exe，可以使用 `windeployqt`：
+
+```bat
+windeployqt iotgateway.exe
+```
+
+- 数据库文件 `gateway.db` 会生成在程序启动时的当前工作目录下。
 
 ## MQTT 可选配置
 
@@ -121,7 +175,7 @@ localhost:1883
 
 没有 MQTT Broker 时，界面仍可运行，实时模拟数据和数据库保存仍会工作，但终端会看到 MQTT 连接错误和重连日志。
 
-如果需要完整测试 MQTT，可以启动 Mosquitto：
+### Linux 安装 Mosquitto
 
 ```bash
 sudo apt install mosquitto mosquitto-clients
@@ -146,6 +200,23 @@ mosquitto_pub -h localhost -t 'home/led/set' -m off
 ```bash
 mosquitto_pub -h localhost -t 'home/buzzer/set' -m on
 mosquitto_pub -h localhost -t 'home/buzzer/set' -m off
+```
+
+### Windows 安装 Mosquitto
+
+1. 从 Mosquitto 官网下载安装包。
+2. 安装后启动 Mosquitto 服务，或在 Mosquitto 安装目录中运行：
+
+```bat
+mosquitto.exe -v
+```
+
+3. 使用 `mosquitto_sub.exe` 和 `mosquitto_pub.exe` 测试主题：
+
+```bat
+mosquitto_sub.exe -h localhost -t home/sensors
+mosquitto_pub.exe -h localhost -t home/led/set -m on
+mosquitto_pub.exe -h localhost -t home/buzzer/set -m off
 ```
 
 ## 数据库说明
@@ -176,38 +247,13 @@ CREATE TABLE IF NOT EXISTS sensor_data (
 
 ## 常见问题
 
-### 启动后提示找不到 Qt 库
-
-优先从构建目录运行：
-
-```bash
-cd /home/my/Qt/iot/build-iotgateway-Desktop_Qt_5_12_9_GCC_64bit-Debug
-./iotgateway
-```
-
-如果仍然缺少 Qt 库，设置 Qt 5.12.9 的库路径后再启动：
-
-```bash
-export LD_LIBRARY_PATH=/home/my/Qt5.12.9/5.12.9/gcc_64/lib:$LD_LIBRARY_PATH
-./iotgateway
-```
-
 ### 编译时报 Unknown module(s) in QT: mqtt 或 charts
 
-说明当前 qmake 对应的 Qt 没有安装 `Qt MQTT` 或 `Qt Charts`。使用当前机器已有的 Qt 5.12.9：
-
-```bash
-/home/my/Qt5.12.9/5.12.9/gcc_64/bin/qmake ../iotgateway/iotgateway.pro -spec linux-g++ CONFIG+=debug
-make -j$(nproc)
-```
+说明当前 qmake 对应的 Qt 没有安装 `Qt MQTT` 或 `Qt Charts`。请在 Qt Maintenance Tool 中安装对应模块，或切换到已安装这些模块的 Qt Kit。
 
 ### 数据库文件在哪里
 
-数据库路径取决于启动程序时的当前目录。推荐在构建目录启动，数据库就在：
-
-```text
-/home/my/Qt/iot/build-iotgateway-Desktop_Qt_5_12_9_GCC_64bit-Debug/gateway.db
-```
+数据库路径取决于启动程序时的当前目录。推荐从构建目录或 Qt Creator 启动，数据库会生成在运行工作目录下。
 
 ### 没有真实传感器能不能运行
 
