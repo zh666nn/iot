@@ -1,21 +1,53 @@
 # iotgateway
 
-基于 Qt Widgets 的物联网网关桌面程序。程序会每 5 秒模拟生成一组传感器数据，在界面中显示实时数据和温度曲线，同时写入 SQLite 数据库，并尝试通过本机 MQTT Broker 上报数据和接收控制命令。
+基于 Qt5 的嵌入式 Linux 物联网网关图形界面程序。项目已在 i.MX6U 开发板上运行，主要实现传感器数据展示、实时曲线、历史数据存储、LED/蜂鸣器控制以及 MQTT 数据上报和远程控制。
 
-## 功能概览
+## 技术栈
 
-- 实时数据：温度、湿度、烟雾、人体红外状态。
-- 历史数据：从 SQLite 数据库查询历史记录并绘制曲线。
-- 设备控制：界面按钮或 MQTT 指令控制 LED、蜂鸣器的模拟状态。
-- MQTT：连接 `localhost:1883`，发布传感器数据到 `home/sensors`，订阅 `home/led/set` 和 `home/buzzer/set`。
+| 方向 | 技术 |
+| --- | --- |
+| 开发语言 | C++11 |
+| 图形界面 | Qt5 Widgets、Qt Designer、`.ui` |
+| 页面结构 | `QListWidget`、`QStackedWidget` |
+| 多线程 | `QThread`、Qt 信号槽 |
+| 图表 | Qt Charts |
+| 数据库 | Qt SQL、SQLite |
+| 网络通信 | Qt MQTT |
+| 硬件控制 | Linux LED class、GPIO sysfs |
+| 构建工具 | qmake、Makefile |
+| 运行平台 | i.MX6U 嵌入式 Linux、Linux 桌面、Windows 桌面 |
+
+## 功能说明
+
+- 实时数据页面：显示温度、湿度、烟雾浓度、人体红外状态。
+- 实时曲线：使用 Qt Charts 绘制温度变化曲线。
+- 历史数据页面：从 SQLite 查询历史传感器数据并绘制曲线。
+- 设备控制页面：本地按钮控制 LED 和蜂鸣器。
+- MQTT 上报：将传感器数据以 JSON 格式发布到 `home/sensors`。
+- MQTT 控制：订阅 `home/led/set` 和 `home/buzzer/set`，接收 `on` / `off` 指令。
+- 多线程采集：采集线程定时生成模拟数据，通过信号槽分发给 UI、数据库和 MQTT 模块。
+- 板端控制：在 i.MX6U 上通过 Linux LED class / GPIO sysfs 控制真实 LED 和蜂鸣器。
+
+## 模块结构
+
+| 模块 | 文件 | 说明 |
+| --- | --- | --- |
+| 主窗口 | `mainwindow.*`、`mainwindow.ui` | 初始化页面、菜单、数据库、MQTT 和采集线程 |
+| 实时页面 | `realtimepage.*`、`realtimepage.ui` | 显示实时传感器数据和温度曲线 |
+| 历史页面 | `historypage.*`、`historypage.ui` | 查询 SQLite 历史数据并绘制曲线 |
+| 控制页面 | `controlpage.*`、`controlpage.ui` | 控制 LED 和蜂鸣器 |
+| 采集线程 | `sensorthread.*` | 定时生成传感器数据 |
+| 数据库 | `databasemanager.*` | 创建表、保存数据、查询历史数据 |
+| MQTT | `mqttmanager.*` | 连接 Broker、发布数据、订阅控制主题 |
+| 数据结构 | `sensordata.h` | 定义传感器数据结构 |
 
 ## 项目结构
 
 ```text
 iot
 ├── README.md
-├── iotgateway/                                      # 源码目录
-│   ├── iotgateway.pro                               # qmake 工程文件
+├── iotgateway/
+│   ├── iotgateway.pro
 │   ├── main.cpp
 │   ├── mainwindow.*
 │   ├── realtimepage.*
@@ -25,209 +57,46 @@ iot
 │   ├── mqttmanager.*
 │   └── sensorthread.*
 └── build-iotgateway-Desktop_Qt_5_12_9_GCC_64bit-Debug/
-    ├── iotgateway                                   # Linux 已构建好的可执行文件
-    └── gateway.db                                   # 运行时 SQLite 数据库
+    ├── iotgateway
+    └── gateway.db
 ```
 
-## 环境要求
-
-工程使用 Qt 5，推荐 Qt 5.12.9 或兼容版本。
-
-需要安装的 Qt 模块：
-
-- `core`
-- `gui`
-- `widgets`
-- `charts`
-- `sql`
-- `mqtt`
-
-还需要：
-
-- C++ 编译器
-- qmake
-- Qt SQLite 驱动
-- 可选：MQTT Broker，例如 Mosquitto
-
-## Linux 下运行
-
-### 方式一：直接运行已有构建
-
-仓库中已有 Linux Debug 构建目录，可以直接运行：
-
-```bash
-cd /home/my/Qt/iot/build-iotgateway-Desktop_Qt_5_12_9_GCC_64bit-Debug
-./iotgateway
-```
-
-建议在构建目录中启动，因为程序使用相对路径 `gateway.db`。如果从其他目录启动，`gateway.db` 会生成在当时的工作目录下。
-
-如果提示找不到 Qt 库，先设置 Qt 库路径：
-
-```bash
-export LD_LIBRARY_PATH=/home/my/Qt5.12.9/5.12.9/gcc_64/lib:$LD_LIBRARY_PATH
-./iotgateway
-```
-
-### 方式二：从源码重新构建
-
-```bash
-cd /home/my/Qt/iot
-mkdir -p build-iotgateway-Desktop_Qt_5_12_9_GCC_64bit-Debug
-cd build-iotgateway-Desktop_Qt_5_12_9_GCC_64bit-Debug
-/home/my/Qt5.12.9/5.12.9/gcc_64/bin/qmake ../iotgateway/iotgateway.pro -spec linux-g++ CONFIG+=debug
-make -j$(nproc)
-./iotgateway
-```
-
-如果系统默认 `qmake` 已安装 `Qt Charts`、`Qt SQL` 和 `Qt MQTT`，也可以使用：
-
-```bash
-cd /home/my/Qt/iot
-mkdir -p build
-cd build
-qmake ../iotgateway/iotgateway.pro
-make -j$(nproc)
-./iotgateway
-```
-
-### 方式三：使用 Qt Creator
-
-1. 打开 Qt Creator。
-2. 选择 `Open Project`，打开 `iotgateway/iotgateway.pro`。
-3. Kit 选择 Linux 桌面 Qt Kit，例如 `Desktop Qt 5.12.9 GCC 64bit`。
-4. 点击 `Build`。
-5. 点击 `Run`。
-
-## Windows 下运行
-
-Windows 下不能直接运行仓库里的 Linux 可执行文件，需要使用 Windows 版 Qt 重新构建。
-
-### 方式一：使用 Qt Creator
-
-1. 安装 Qt 5.12.9 或兼容版本。
-2. 安装并启用这些组件：
-   - MinGW 或 MSVC 编译器
-   - Qt Charts
-   - Qt MQTT
-   - Qt SQL
-3. 打开 Qt Creator。
-4. 选择 `Open Project`，打开：
+## 数据流
 
 ```text
-iotgateway/iotgateway.pro
+SensorThread
+    ├── newSensorData -> RealtimePage        # 刷新实时数值和曲线
+    ├── newSensorData -> DatabaseManager     # 写入 SQLite
+    └── newSensorData -> MqttManager         # 发布 MQTT
+
+MqttManager
+    ├── home/led/set    -> ControlPage::setLed()
+    └── home/buzzer/set -> ControlPage::setBuzzer()
 ```
 
-5. Kit 选择 Windows 桌面 Kit，例如：
+## MQTT 主题
 
-```text
-Desktop Qt 5.12.9 MinGW 64-bit
+| 方向 | 主题 | 数据 |
+| --- | --- | --- |
+| 发布 | `home/sensors` | 传感器 JSON 数据 |
+| 订阅 | `home/led/set` | `on` / `off` |
+| 订阅 | `home/buzzer/set` | `on` / `off` |
+
+传感器上报示例：
+
+```json
+{"temp":25.3,"humidity":61.2,"smoke":120,"pir":1}
 ```
 
-6. 点击 `Configure Project`。
-7. 点击 `Build`。
-8. 点击 `Run`。
+## SQLite 数据表
 
-### 方式二：使用命令行构建
-
-先打开 Qt 提供的命令行环境，例如 `Qt 5.12.9 for Desktop (MinGW 64-bit)`，然后进入项目目录：
-
-```bat
-cd /d D:\path\to\iot
-mkdir build
-cd build
-qmake ..\iotgateway\iotgateway.pro
-mingw32-make
-iotgateway.exe
-```
-
-如果使用 MSVC Kit，则在对应的 Qt MSVC 命令行中执行：
-
-```bat
-cd /d D:\path\to\iot
-mkdir build
-cd build
-qmake ..\iotgateway\iotgateway.pro
-nmake
-iotgateway.exe
-```
-
-其中 `D:\path\to\iot` 替换成你本机实际的项目路径。
-
-### Windows 运行注意事项
-
-- 如果双击运行 `iotgateway.exe` 提示缺少 Qt DLL，优先通过 Qt Creator 运行。
-- 如果要单独发布 exe，可以使用 `windeployqt`：
-
-```bat
-windeployqt iotgateway.exe
-```
-
-- 数据库文件 `gateway.db` 会生成在程序启动时的当前工作目录下。
-
-## MQTT 可选配置
-
-程序启动时会自动尝试连接：
-
-```text
-localhost:1883
-```
-
-没有 MQTT Broker 时，界面仍可运行，实时模拟数据和数据库保存仍会工作，但终端会看到 MQTT 连接错误和重连日志。
-
-### Linux 安装 Mosquitto
-
-```bash
-sudo apt install mosquitto mosquitto-clients
-sudo systemctl enable --now mosquitto
-```
-
-查看程序上报的传感器数据：
-
-```bash
-mosquitto_sub -h localhost -t 'home/sensors'
-```
-
-发送 LED 控制命令：
-
-```bash
-mosquitto_pub -h localhost -t 'home/led/set' -m on
-mosquitto_pub -h localhost -t 'home/led/set' -m off
-```
-
-发送蜂鸣器控制命令：
-
-```bash
-mosquitto_pub -h localhost -t 'home/buzzer/set' -m on
-mosquitto_pub -h localhost -t 'home/buzzer/set' -m off
-```
-
-### Windows 安装 Mosquitto
-
-1. 从 Mosquitto 官网下载安装包。
-2. 安装后启动 Mosquitto 服务，或在 Mosquitto 安装目录中运行：
-
-```bat
-mosquitto.exe -v
-```
-
-3. 使用 `mosquitto_sub.exe` 和 `mosquitto_pub.exe` 测试主题：
-
-```bat
-mosquitto_sub.exe -h localhost -t home/sensors
-mosquitto_pub.exe -h localhost -t home/led/set -m on
-mosquitto_pub.exe -h localhost -t home/buzzer/set -m off
-```
-
-## 数据库说明
-
-数据库文件名是：
+数据库文件名：
 
 ```text
 gateway.db
 ```
 
-程序启动时会自动创建表：
+表结构：
 
 ```sql
 CREATE TABLE IF NOT EXISTS sensor_data (
@@ -238,27 +107,164 @@ CREATE TABLE IF NOT EXISTS sensor_data (
 );
 ```
 
-每次模拟采集会写入 4 条记录：
+每轮采集写入 4 条记录：
 
 - `temperature`
 - `humidity`
 - `smoke`
 - `pir`
 
+## i.MX6U 板端说明
+
+项目已移植到 i.MX6U 嵌入式 Linux 平台运行。板端主要注意以下内容：
+
+- 使用 i.MX6U 对应 Qt5 运行环境。
+- 根据实际网络环境修改 MQTT Broker 地址。
+- LED 通过 Linux LED class 控制，例如写入：
+
+```text
+/sys/class/leds/<led-name>/brightness
+```
+
+- 蜂鸣器通过 GPIO sysfs 控制，例如：
+
+```text
+/sys/class/gpio/gpioN/direction
+/sys/class/gpio/gpioN/value
+```
+
+控制逻辑由 `ControlPage` 统一处理，本地按钮和 MQTT 指令最终调用同一套 LED/蜂鸣器控制接口。
+
+## 环境要求
+
+Qt 模块：
+
+- `core`
+- `gui`
+- `widgets`
+- `charts`
+- `sql`
+- `mqtt`
+
+其他依赖：
+
+- C++ 编译器
+- qmake
+- make
+- Qt SQLite 驱动
+- 可选：Mosquitto 或其他 MQTT Broker
+
+## Linux 下构建运行
+
+当前工程使用 Qt 5.12.9 测试：
+
+```bash
+cd /home/my/Qt/iot
+mkdir -p build-iotgateway-Desktop_Qt_5_12_9_GCC_64bit-Debug
+cd build-iotgateway-Desktop_Qt_5_12_9_GCC_64bit-Debug
+/home/my/Qt5.12.9/5.12.9/gcc_64/bin/qmake ../iotgateway/iotgateway.pro -spec linux-g++ CONFIG+=debug
+make -j$(nproc)
+./iotgateway
+```
+
+如果系统默认 `qmake` 已安装 Qt Charts、Qt SQL 和 Qt MQTT，也可以使用：
+
+```bash
+cd /home/my/Qt/iot
+mkdir -p build
+cd build
+qmake ../iotgateway/iotgateway.pro
+make -j$(nproc)
+./iotgateway
+```
+
+程序使用相对路径创建 `gateway.db`，建议在构建目录中启动。
+
+## Qt Creator 运行
+
+1. 打开 Qt Creator。
+2. 打开 `iotgateway/iotgateway.pro`。
+3. 选择对应 Qt Kit。
+4. 点击 `Build`。
+5. 点击 `Run`。
+
+## Windows 下构建运行
+
+Windows 下需要使用 Windows 版 Qt 重新构建，不能直接运行 Linux 可执行文件。
+
+Qt Creator 方式：
+
+1. 安装 Qt 5.12.9 或兼容版本。
+2. 安装 Qt Charts、Qt MQTT、Qt SQL。
+3. 打开 `iotgateway/iotgateway.pro`。
+4. 选择 MinGW 或 MSVC Kit。
+5. 构建并运行。
+
+命令行方式：
+
+```bat
+cd /d D:\path\to\iot
+mkdir build
+cd build
+qmake ..\iotgateway\iotgateway.pro
+mingw32-make
+iotgateway.exe
+```
+
+单独发布 exe 时可使用：
+
+```bat
+windeployqt iotgateway.exe
+```
+
+## MQTT 测试
+
+Linux 安装 Mosquitto：
+
+```bash
+sudo apt install mosquitto mosquitto-clients
+sudo systemctl enable --now mosquitto
+```
+
+订阅传感器数据：
+
+```bash
+mosquitto_sub -h localhost -t 'home/sensors'
+```
+
+发送 LED 控制：
+
+```bash
+mosquitto_pub -h localhost -t 'home/led/set' -m on
+mosquitto_pub -h localhost -t 'home/led/set' -m off
+```
+
+发送蜂鸣器控制：
+
+```bash
+mosquitto_pub -h localhost -t 'home/buzzer/set' -m on
+mosquitto_pub -h localhost -t 'home/buzzer/set' -m off
+```
+
 ## 常见问题
 
 ### 编译时报 Unknown module(s) in QT: mqtt 或 charts
 
-说明当前 qmake 对应的 Qt 没有安装 `Qt MQTT` 或 `Qt Charts`。请在 Qt Maintenance Tool 中安装对应模块，或切换到已安装这些模块的 Qt Kit。
+当前 Qt Kit 没有安装 Qt MQTT 或 Qt Charts。需要在 Qt Maintenance Tool 中安装对应模块，或切换到已安装模块的 Qt Kit。
+
+### 启动后找不到 Qt 库
+
+Linux 下可临时设置 Qt 库路径：
+
+```bash
+export LD_LIBRARY_PATH=/home/my/Qt5.12.9/5.12.9/gcc_64/lib:$LD_LIBRARY_PATH
+./iotgateway
+```
 
 ### 数据库文件在哪里
 
-数据库路径取决于启动程序时的当前目录。推荐从构建目录或 Qt Creator 启动，数据库会生成在运行工作目录下。
+数据库路径取决于程序启动时的当前工作目录。推荐从构建目录或 Qt Creator 启动。
 
-### 没有真实传感器能不能运行
+### 没有 MQTT Broker 能否运行
 
-可以。当前 `SensorThread` 会随机生成模拟数据，不依赖真实硬件。
-
-### 没有 MQTT 能不能运行
-
-可以。MQTT 连接失败只影响上报和远程控制，实时页面、历史数据和本地控制按钮仍可使用。
+可以。MQTT 连接失败只影响数据上报和远程控制，实时页面、历史数据和本地控制仍可运行。
