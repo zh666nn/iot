@@ -28,6 +28,26 @@
 - 多线程采集：采集线程定时生成模拟数据，通过信号槽分发给 UI、数据库和 MQTT 模块。
 - 板端控制：在 i.MX6U 上通过 Linux LED class / GPIO sysfs 控制真实 LED 和蜂鸣器。
 
+## 运行效果
+
+> 将截图放到 `docs/images/` 目录后，替换下面的图片文件名即可。
+
+### 实时数据页面
+
+![实时数据页面](docs/images/realtime-page.png)
+
+### 历史数据页面
+
+![历史数据页面](docs/images/history-page.png)
+
+### 设备控制页面
+
+![设备控制页面](docs/images/control-page.png)
+
+### i.MX6U 板端运行
+
+![i.MX6U 板端运行](docs/images/imx6u-running.png)
+
 ## 模块结构
 
 | 模块 | 文件 | 说明 |
