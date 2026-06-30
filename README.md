@@ -30,8 +30,6 @@
 
 ## 运行效果
 
-> 将截图放到 `docs/images/` 目录后，替换下面的图片文件名即可。
-
 ### 实时数据页面
 
 ![实时数据页面](docs/images/realtime-page.png)
