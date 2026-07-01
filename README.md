@@ -42,10 +42,6 @@
 
 ![设备控制页面](docs/images/control-page.png)
 
-### i.MX6U 板端运行
-
-![i.MX6U 板端运行](docs/images/imx6u-running.png)
-
 ## 模块结构
 
 | 模块 | 文件 | 说明 |
